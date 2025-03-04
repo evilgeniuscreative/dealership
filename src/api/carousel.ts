@@ -1,7 +1,7 @@
 import express, { Request, Response, Router } from 'express';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import pool from '../services/database';
-import { CarouselImage } from '../types';
+import { CarouselImage, CarouselImageInput } from '../types/carousel';
 import { authMiddleware } from '../middleware/auth';
 
 const router: Router = express.Router();
@@ -24,29 +24,16 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // Create a new carousel image
-router.post('/', authMiddleware, async (req: Request<{}, {}, CarouselImage & { car_id?: number }>, res: Response) => {
+router.post('/', authMiddleware, async (req: Request<{}, {}, CarouselImageInput & { car_id?: number }>, res: Response) => {
   try {
-    const image = req.body;
-    
-    // SQL query depends on whether car_id is provided
-    let query, params;
-    
-    if (image.car_id) {
-      query = 'INSERT INTO carousel_images (car_id, title, subtitle, image_url, display_order, carousel_type) VALUES (?, ?, ?, ?, ?, ?)';
-      params = [image.car_id, image.title, image.subtitle, image.imageUrl, image.displayOrder || 0, image.carousel_type || 'main'];
-    } else {
-      query = 'INSERT INTO carousel_images (title, subtitle, image_url, display_order, carousel_type) VALUES (?, ?, ?, ?, ?)';
-      params = [image.title, image.subtitle, image.imageUrl, image.displayOrder || 0, image.carousel_type || 'main'];
-    }
-
-    const [result] = await pool.execute<ResultSetHeader>(query, params);
-
-    const [newImage] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM carousel_images WHERE id = ?',
-      [result.insertId]
+    const carouselImage = req.body;
+    const [result] = await pool.execute<ResultSetHeader>(
+      'INSERT INTO carousel_images (imageUrl, title, subtitle, delay, display_order, carousel_type, car_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [carouselImage.imageUrl, carouselImage.title, carouselImage.subtitle, carouselImage.delay, carouselImage.displayOrder, carouselImage.carousel_type, carouselImage.car_id]
     );
 
-    res.status(201).json(newImage[0] as CarouselImage);
+    const newImage = { ...carouselImage, id: result.insertId };
+    res.status(201).json(newImage);
   } catch (error) {
     console.error('Error creating carousel image:', error);
     res.status(500).json({ error: 'Failed to create carousel image' });
@@ -54,33 +41,20 @@ router.post('/', authMiddleware, async (req: Request<{}, {}, CarouselImage & { c
 });
 
 // Update a carousel image
-router.put('/:id', authMiddleware, async (req: Request<{ id: string }, {}, CarouselImage & { car_id?: number }>, res: Response) => {
+router.put('/:id', authMiddleware, async (req: Request<{ id: string }, {}, CarouselImageInput & { car_id?: number }>, res: Response) => {
   try {
-    const image = req.body;
-    
-    // SQL query depends on whether car_id is provided
-    let query, params;
-    
-    if (image.car_id) {
-      query = 'UPDATE carousel_images SET car_id = ?, title = ?, subtitle = ?, image_url = ?, display_order = ?, carousel_type = ? WHERE id = ?';
-      params = [image.car_id, image.title, image.subtitle, image.imageUrl, image.displayOrder || 0, image.carousel_type || 'main', req.params.id];
-    } else {
-      query = 'UPDATE carousel_images SET car_id = NULL, title = ?, subtitle = ?, image_url = ?, display_order = ?, carousel_type = ? WHERE id = ?';
-      params = [image.title, image.subtitle, image.imageUrl, image.displayOrder || 0, image.carousel_type || 'main', req.params.id];
-    }
-
-    const [result] = await pool.execute<ResultSetHeader>(query, params);
+    const carouselImage = req.body;
+    const [result] = await pool.execute<ResultSetHeader>(
+      'UPDATE carousel_images SET imageUrl = ?, title = ?, subtitle = ?, delay = ?, display_order = ?, carousel_type = ?, car_id = ? WHERE id = ?',
+      [carouselImage.imageUrl, carouselImage.title, carouselImage.subtitle, carouselImage.delay, carouselImage.displayOrder, carouselImage.carousel_type, carouselImage.car_id, req.params.id]
+    );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Carousel image not found' });
     }
 
-    const [updatedImage] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM carousel_images WHERE id = ?',
-      [req.params.id]
-    );
-
-    res.json(updatedImage[0] as CarouselImage);
+    const updatedImage = { ...carouselImage, id: parseInt(req.params.id) };
+    res.json(updatedImage);
   } catch (error) {
     console.error('Error updating carousel image:', error);
     res.status(500).json({ error: 'Failed to update carousel image' });

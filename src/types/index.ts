@@ -1,4 +1,4 @@
-export interface Car {
+interface Car {
   id: number;
   make: string;
   model: string;
@@ -14,17 +14,9 @@ export interface Car {
   imageUrl: string;
 }
 
-export interface CarouselImage {
-  id: number;
-  imageUrl: string;
-  title: string;
-  subtitle?: string;
-  delay: number;
-  displayOrder?: number;
-  carousel_type?: string;
-}
+// CarouselImageInput and CarouselImage are now imported from './carousel'
 
-export interface SearchFilters {
+interface SearchFilters {
   make?: string;
   model?: string;
   minPrice?: number;
@@ -32,16 +24,26 @@ export interface SearchFilters {
   maxMileage?: number;
 }
 
-export interface PageHero {
+interface PageHero {
   title: string;
   subtitle?: string;
   imageUrl: string;
   height: number;
 }
 
-export interface ContactForm {
+interface ContactForm {
   name: string;
   email: string;
   phone?: string;
   message: string;
 }
+
+// Import and re-export carousel types
+export * from './carousel';
+
+export type {
+  Car,
+  SearchFilters,
+  PageHero,
+  ContactForm
+};
